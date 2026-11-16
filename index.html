@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的食譜</title>
+<style>
+  :root{
+    --bg:#faf6f0; --card:#ffffff; --ink:#2b2420; --muted:#7a6f66; --line:#e8dfd3;
+    --accent:#c2552d; --accent-soft:#fbe9e0; --ok:#3f8f5f; --tip:#fff6d9; --tip-line:#ecd98a;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); line-height:1.65;
+    font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:20px 16px 60px;}
+  header.top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px;}
+  h1{font-size:1.6rem; margin:0; letter-spacing:.04em;}
+  h1 a{color:inherit; text-decoration:none;}
+  .sub{color:var(--muted); font-size:.85rem;}
+
+  /* 搜尋與分類 */
+  .tools{display:flex; flex-direction:column; gap:10px; margin-bottom:18px;}
+  #q{
+    width:100%; padding:12px 14px; font-size:1rem; border:1px solid var(--line);
+    border-radius:12px; background:#fff; color:var(--ink); outline:none;
+  }
+  #q:focus{border-color:var(--accent);}
+  .chips{display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{
+    border:1px solid var(--line); background:#fff; color:var(--muted); padding:5px 14px;
+    border-radius:999px; font-size:.88rem; cursor:pointer; font-family:inherit;
+  }
+  .chip.on{background:var(--accent); border-color:var(--accent); color:#fff;}
+
+  /* 清單卡片 */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px;
+    cursor:pointer; text-align:left; font-family:inherit; color:inherit;
+    transition:transform .12s, box-shadow .12s;
+  }
+  .card:hover{transform:translateY(-2px); box-shadow:0 8px 20px rgba(80,50,20,.08);}
+  .card .emoji{font-size:2rem; line-height:1;}
+  .card h2{font-size:1.15rem; margin:10px 0 4px;}
+  .card .meta{color:var(--muted); font-size:.82rem;}
+  .tag{display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:1px 10px; font-size:.76rem; font-weight:600;}
+  .empty{color:var(--muted); padding:30px 0; text-align:center;}
+
+  /* 詳細頁 */
+  .back{
+    display:inline-block; margin-bottom:14px; color:var(--accent); text-decoration:none;
+    font-size:.95rem; border:1px solid var(--line); background:#fff; padding:6px 14px; border-radius:999px;
+  }
+  .detail{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px 20px;}
+  .detail h2{font-size:1.5rem; margin:6px 0 2px;}
+  .detail h3{font-size:1.02rem; margin:24px 0 8px; color:var(--accent); letter-spacing:.05em;}
+  .ing{display:flex; flex-wrap:wrap; gap:8px; padding:0; margin:0; list-style:none;}
+  .ing li{background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:4px 12px; font-size:.95rem;}
+  .ing.opt li{border-style:dashed; color:var(--muted);}
+  .prep{background:var(--bg); border-radius:12px; padding:12px 14px; font-size:.97rem;}
+  ol.steps{list-style:none; counter-reset:s; padding:0; margin:0;}
+  ol.steps li{
+    counter-increment:s; position:relative; padding:12px 12px 12px 52px; border-bottom:1px solid var(--line);
+    cursor:pointer; font-size:1.05rem; user-select:none;
+  }
+  ol.steps li:last-child{border-bottom:none;}
+  ol.steps li::before{
+    content:counter(s); position:absolute; left:8px; top:11px; width:30px; height:30px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; display:flex; align-items:center; justify-content:center; font-size:.95rem;
+  }
+  ol.steps li.done{color:var(--muted); text-decoration:line-through;}
+  ol.steps li.done::before{content:"✓"; background:var(--ok); color:#fff;}
+  ol.steps li small{display:block; color:var(--muted); font-size:.88rem; text-decoration:none;}
+  .tips{background:var(--tip); border:1px solid var(--tip-line); border-radius:12px; padding:10px 14px 10px 30px; margin:0;}
+  .tips li{margin:4px 0;}
+  .hint{color:var(--muted); font-size:.8rem; margin-top:6px;}
+  .reset{margin-top:10px; border:1px solid var(--line); background:#fff; border-radius:999px; padding:5px 14px; cursor:pointer; color:var(--muted); font-family:inherit; font-size:.85rem;}
+  footer{margin-top:30px; color:var(--muted); font-size:.78rem; text-align:center;}
+
+  @media(max-width:520px){
+    h1{font-size:1.35rem;} .detail{padding:18px 14px;} ol.steps li{font-size:1.08rem;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><a href="#">我的食譜</a></h1>
+    <span class="sub">依自己的經驗整理,份量憑手感</span>
+  </header>
+  <main id="app"></main>
+  <footer>點步驟可以打勾,做到哪一步一目了然</footer>
+</div>
+
+<script>
+/* ============ 食譜資料:要加新菜就在這個陣列新增一筆 ============ */
+var RECIPES = [
+  {
+    id: "sanbei-clams", name: "三杯海瓜子", type: "熱炒", emoji: "🐚",
+    ingredients: ["海瓜子","米酒","油","蔥(蔥白、蔥綠分開)","蒜(切碎)","薑絲","辣椒(切碎)","九層塔(只要葉子)","蠔油膏","香油","水","白胡椒","糖","鹽"],
+    optional: ["豆瓣醬","沙茶醬","花椒油","太白粉(勾芡)"],
+    prep: "先狂洗 3 遍 → 泡水加鹽吐沙 → 換水再吐沙 → 等待 → 瀝水(放冰箱)",
+    steps: [
+      {t:"海瓜子加一點米酒煮 3~4 分鐘,撈起備用"},
+      {t:"開始做醬:下油"},
+      {t:"下蔥白、蒜(切碎)"},
+      {t:"下薑絲、蠔油膏、香油、辣椒(切碎)", note:"可選:豆瓣醬、沙茶醬、花椒油"},
+      {t:"加水、白胡椒、糖、鹽"},
+      {t:"下蔥綠", note:"可選:太白粉勾芡"},
+      {t:"下九層塔(只要葉子)"}
+    ],
+    tips: ["海瓜子先煮好撈起,醬做好再結合,肉才不會煮太久","九層塔只用葉子,最後才下"]
+  },
+  {
+    id: "clam-soup", name: "蛤蜊湯", type: "湯", emoji: "🍲",
+    ingredients: ["蛤蜊","薑絲","鹽","味精","香菜","蔥","九層塔(只要葉子)"],
+    optional: [],
+    prep: "",
+    steps: [
+      {t:"先狂洗 3 遍 → 泡水加鹽吐沙 → 換水再吐沙 → 等待 → 瀝水"},
+      {t:"下薑絲、鹽、味精"},
+      {t:"下香菜、蔥、九層塔(只要葉子)"},
+      {t:"蛤蜊有開就好"}
+    ],
+    tips: ["殼一開就關火,煮太久肉會變很小"]
+  },
+  {
+    id: "grilled-threadfin", name: "烤午仔魚", type: "烤", emoji: "🐟",
+    ingredients: ["午仔魚","鹽","錫箔紙"],
+    optional: ["碎蒜(塞魚肚)","蔥(塞魚肚)"],
+    prep: "",
+    steps: [
+      {t:"撒薄鹽,放冰箱乾燥"},
+      {t:"烤前下面墊錫箔紙", note:"先揉過再攤開"},
+      {t:"再灑一次鹽,肚子可以塞碎蒜與蔥"},
+      {t:"180 度烤 10 分鐘,檢查熟度"}
+    ],
+    tips: ["先撒鹽冰過讓表面乾燥再烤","錫箔紙揉過再攤開墊底"]
+  },
+  {
+    id: "steamed-crab", name: "清蒸螃蟹", type: "蒸", emoji: "🦀",
+    ingredients: ["螃蟹","米酒","鹽(些微)","薑絲"],
+    optional: [],
+    prep: "",
+    steps: [
+      {t:"拆螃蟹", note:"剪刀從嘴巴插入撐開;生殖器剪掉;蟹心、蟹鰓移除"},
+      {t:"蟹頭邊緣修剪"},
+      {t:"刷洗乾淨,大螯敲碎"},
+      {t:"加米酒、些微鹽、薑絲"},
+      {t:"蒸 10 分鐘,檢查是否熟了"}
+    ],
+    tips: ["蟹黃(蛋)蒸太乾不好吃,糖心最好,所以 10 分鐘就先檢查,不要蒸過頭"]
+  }
+];
+/* ================================================================ */
+
+var app = document.getElementById("app");
+var state = { q: "", type: "全部" };
+
+function el(tag, cls, text){
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function matches(r){
+  if (state.type !== "全部" && r.type !== state.type) return false;
+  var q = state.q.trim().toLowerCase();
+  if (!q) return true;
+  var hay = [r.name, r.type].concat(r.ingredients, r.optional || []).join(" ").toLowerCase();
+  return hay.indexOf(q) !== -1;
+}
+
+function renderList(){
+  app.innerHTML = "";
+  var tools = el("div", "tools");
+  var q = el("input");
+  q.id = "q"; q.type = "search"; q.placeholder = "搜尋菜名或食材,例如:九層塔";
+  q.value = state.q;
+  q.addEventListener("input", function(){ state.q = q.value; drawGrid(); });
+  tools.appendChild(q);
+
+  var chips = el("div", "chips");
+  var types = ["全部"];
+  RECIPES.forEach(function(r){ if (types.indexOf(r.type) === -1) types.push(r.type); });
+  types.forEach(function(t){
+    var c = el("button", "chip" + (state.type === t ? " on" : ""), t);
+    c.type = "button";
+    c.addEventListener("click", function(){ state.type = t; renderList(); });
+    chips.appendChild(c);
+  });
+  tools.appendChild(chips);
+  app.appendChild(tools);
+
+  var grid = el("div", "grid");
+  grid.id = "grid";
+  app.appendChild(grid);
+  drawGrid();
+}
+
+function drawGrid(){
+  var grid = document.getElementById("grid");
+  grid.innerHTML = "";
+  var list = RECIPES.filter(matches);
+  if (!list.length){
+    grid.appendChild(el("div", "empty", "找不到符合的食譜"));
+    return;
+  }
+  list.forEach(function(r){
+    var card = el("button", "card");
+    card.type = "button";
+    card.appendChild(el("div", "emoji", r.emoji));
+    card.appendChild(el("h2", "", r.name));
+    var meta = el("div", "meta");
+    meta.appendChild(el("span", "tag", r.type));
+    meta.appendChild(document.createTextNode("  " + r.steps.length + " 個步驟"));
+    card.appendChild(meta);
+    card.addEventListener("click", function(){ location.hash = r.id; });
+    grid.appendChild(card);
+  });
+}
+
+function renderDetail(r){
+  app.innerHTML = "";
+  var back = el("a", "back", "← 回食譜列表");
+  back.href = "#";
+  app.appendChild(back);
+
+  var d = el("article", "detail");
+  d.appendChild(el("span", "tag", r.type));
+  d.appendChild(el("h2", "", r.emoji + " " + r.name));
+
+  d.appendChild(el("h3", "", "材料"));
+  var ul = el("ul", "ing");
+  r.ingredients.forEach(function(i){ ul.appendChild(el("li", "", i)); });
+  d.appendChild(ul);
+
+  if (r.optional && r.optional.length){
+    d.appendChild(el("h3", "", "可選"));
+    var ul2 = el("ul", "ing opt");
+    r.optional.forEach(function(i){ ul2.appendChild(el("li", "", i)); });
+    d.appendChild(ul2);
+  }
+
+  if (r.prep){
+    d.appendChild(el("h3", "", "前處理"));
+    d.appendChild(el("div", "prep", r.prep));
+  }
+
+  d.appendChild(el("h3", "", "步驟"));
+  var ol = el("ol", "steps");
+  r.steps.forEach(function(s){
+    var li = el("li", "", s.t);
+    if (s.note) li.appendChild(el("small", "", s.note));
+    li.addEventListener("click", function(){ li.classList.toggle("done"); });
+    ol.appendChild(li);
+  });
+  d.appendChild(ol);
+  var reset = el("button", "reset", "清除打勾");
+  reset.type = "button";
+  reset.addEventListener("click", function(){
+    ol.querySelectorAll("li.done").forEach(function(li){ li.classList.remove("done"); });
+  });
+  d.appendChild(reset);
+
+  if (r.tips && r.tips.length){
+    d.appendChild(el("h3", "", "重點"));
+    var tips = el("ul", "tips");
+    r.tips.forEach(function(t){ tips.appendChild(el("li", "", t)); });
+    d.appendChild(tips);
+  }
+
+  app.appendChild(d);
+  window.scrollTo(0, 0);
+}
+
+function route(){
+  var id = decodeURIComponent(location.hash.replace(/^#/, ""));
+  var r = null;
+  RECIPES.forEach(function(x){ if (x.id === id) r = x; });
+  if (r) { document.title = r.name + "｜我的食譜"; renderDetail(r); }
+  else { document.title = "我的食譜"; renderList(); }
+}
+
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
